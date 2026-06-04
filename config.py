@@ -15,7 +15,7 @@ def autostart():
     subprocess.Popen([home])
     
     #wallpaper
-    subprocess.run(["feh", "--bg-fill", "/mnt/storage/Media/Picture/Wallpaper/victoria-harbour-6144x3456-11445.jpg"])
+    subprocess.run(["feh", "--bg-fill", "/home/xunlai/.config/qtile/media/pictures/wallpapers/victoria-harbour-6144x3456-11445.jpg"])
 
     #Screen locker process
     subprocess.Popen(["xfce4-screensaver"])
