@@ -1,13 +1,67 @@
 import  os
-from collections.abc import Callable
 
+import time as _time
+import psutil
 import libqtile.resources
 import subprocess
+
+from collections.abc import Callable
 from libqtile import hook
 from libqtile import bar, layout, qtile, widget
 from libqtile.config import Click, Drag, Group, Key, Match, Output, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
+
+_disk_io_prev = [None, None]  # [io_counters, timestamp]
+
+def get_disk_io_usage():
+    current = psutil.disk_io_counters()
+    now = _time.time()
+
+    if _disk_io_prev[0] is None:
+        _disk_io_prev[0] = current
+        _disk_io_prev[1] = now
+        return "00.0%"
+
+    elapsed_ms = (now - _disk_io_prev[1]) * 1000
+    busy_delta = current.busy_time - _disk_io_prev[0].busy_time
+
+    _disk_io_prev[0] = current
+    _disk_io_prev[1] = now
+
+    utilization = min((busy_delta / elapsed_ms) * 100, 100)
+    return f"{utilization:04.1f}%"
+
+_net_prev = [None, None]  # [counters, timestamp]
+
+def get_disk_usage():
+    usage = psutil.disk_usage('/')
+    used_gb = usage.used / (1024 ** 3)
+    total_gb = usage.total / (1024 ** 3)
+    return f"{used_gb:.1f}/{total_gb:.0f}GB"
+
+def get_network_speed():
+    current = psutil.net_io_counters()
+    now = _time.time()
+
+    if _net_prev[0] is None:
+        _net_prev[0] = current
+        _net_prev[1] = now
+        return "00.00 KBs ↓↑ 00.00 KBs"
+
+    elapsed = now - _net_prev[1]
+    down = (current.bytes_recv - _net_prev[0].bytes_recv) / elapsed
+    up   = (current.bytes_sent - _net_prev[0].bytes_sent) / elapsed
+
+    _net_prev[0] = current
+    _net_prev[1] = now
+
+    def fmt(bps):
+        if bps >= 1024 * 1024:
+            return f"{bps / (1024 * 1024):05.2f}MBs"
+        return f"{bps / 1024:05.2f}KBs"
+
+    return f"{fmt(down)} ↓↑ {fmt(up)}"
 
 @lazy.function
 def unminimize_next(qtile):
@@ -167,7 +221,6 @@ screens = [
                widget.GroupBox(
                             fontsize=(17),
                ),
-               #widget.Prompt(),
               widget.TextBox("",
                             fontsize=(90),
                             foreground="000000",
@@ -178,12 +231,7 @@ screens = [
                             fontsize=(1),
                             background='8F8F88',
                             ),
-                #widget.WindowName(
                             
-                 #           foreground="ffffff",
-                  #          background="8F8F88",
-                    
-                   #         ),
                 widget.TaskList(
                             background="8F8F88",
                             foreground="ffffff",
@@ -208,25 +256,25 @@ screens = [
               widget.TextBox("",
                             fontsize=(90),
                             foreground="8F8F88",
-                            background='ffffff',
+                            background='80807A',
                             padding=-14,
                             ),
                widget.TextBox(" ",
                             fontsize=(1),
-                            background='ffffff',
+                            background='80807A',
                             ),
                  widget.Systray(
                             icon_size=(24),
-                            background="ffffff"
+                            background="80807A"
                     
                             ),
                 widget.TextBox(" ",
                             fontsize=(1),
-                            background='ffffff',
+                            background='80807A',
                             ),
                 widget.TextBox("",
                             fontsize=(90),
-                            foreground="ffffff",
+                            foreground="80807A",
                             background='3483eb',
                             padding=-14,
                             ),
@@ -249,12 +297,44 @@ screens = [
                 widget.ThermalSensor(
                             tag_sensor="Core 0",
                             background="3483eb",
-                            update_interval=1,
-                            
-                            ),                           
-                widget.TextBox("",
+                            update_interval=1,        
+                            ),
+# CPU → Disk transition
+
+         widget.TextBox("",
                             fontsize=(90),
                             foreground="3483eb",
+                            background='e07020',
+                            padding=-14,
+                            ),
+              widget.TextBox(" ",
+                            fontsize=(1),
+                            background='e07020',
+                            ),
+              widget.TextBox("󰋊",
+                            fontsize=(30),
+                            background='e07020',
+                            ),
+          widget.GenPollText(
+                            background='e07020',
+                            func=get_disk_usage,
+                            update_interval=30,
+                            fontsize=18,
+                            padding=4,
+                        ),
+                        # Disk I/O utilization
+
+        widget.GenPollText(
+                            background='e07020',
+                            func=get_disk_io_usage,
+                            update_interval=1,
+                            fontsize=18,
+                            padding=4,
+                        ),
+# Disk → RAM transition
+         widget.TextBox("",
+                            fontsize=(90),
+                            foreground="e07020",
                             background='0dd459',
                             padding=-14,
                             ),
@@ -262,11 +342,11 @@ screens = [
                             fontsize=(1),
                             background='0dd459',
                             ),
-                widget.TextBox("",
-                            fontsize=(30),
+                widget.TextBox("󰒋",
+                            fontsize=(25),
                             background='0dd459',
                             ),
-                widget.Memory(
+            widget.Memory(
                             background='0dd459',
                             format='{MemUsed:.0f}{mm}',
                             ),
@@ -285,9 +365,12 @@ screens = [
                             fontsize=(30),
                             background='9f11c2',
                             ),
-                widget.Net(
+          widget.GenPollText(
                             background='9f11c2',
-                            format='{down} ↓↑ {up}'
+                            func=get_network_speed,
+                            update_interval=1,
+                            fontsize=18,
+                            padding=4,
                             ),
                 widget.TextBox("",
                             fontsize=(90),
@@ -325,9 +408,9 @@ screens = [
                             ), 
             ],
             34,
-            border_width=[1, 1, 1, 1],  # Draw top and bottom borders
-            margin=[4,4,4,4],
-            border_color="0362fc"  # Borders are magenta
+            border_width=[3, 3, 3, 3],  # Draw top and bottom borders
+            margin=[8,8,0,8],
+            border_color="000000"  # Borders are magenta
         ),
     ),
 ]
