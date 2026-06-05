@@ -9,6 +9,16 @@ from libqtile.config import Click, Drag, Group, Key, Match, Output, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
 
+@lazy.function
+def unminimize_next(qtile):
+    """Cycle through minimized windows, restoring them one at a time."""
+    group = qtile.current_group
+    minimized = [w for w in group.windows if w.minimized]
+    if minimized:
+        w = minimized[0]
+        w.minimized = False
+        group.focus(w, True)
+
 @hook.subscribe.startup_once
 def autostart():
     home = os.path.expanduser('~/.config/qtile/autostart.sh')
@@ -21,6 +31,8 @@ def autostart():
     subprocess.Popen(["xfce4-screensaver"])
 mod = "mod4"
 terminal = guess_terminal()
+
+
 
 keys = [
     # A list of available commands that can be bound to keys can be found
@@ -40,13 +52,18 @@ keys = [
     Key([mod, "shift"], "Down", lazy.layout.shuffle_down(), desc="Move window down"),
     Key([mod, "shift"], "Up", lazy.layout.shuffle_up(), desc="Move window up"),
 
+    # Minimize / Maximize and cycle tabs
+    Key(["mod1"], "Tab", unminimize_next, desc="Restore next minimized window"),
+    Key([mod], "n", lazy.window.toggle_minimize(), desc="Toggle minimize focused window"),
+    Key([mod], "m", lazy.window.toggle_maximize(), desc="Toggle maximize focused window"),
+
     # Grow windows. If current window is on the edge of screen and direction
     # will be to screen edge - window would shrink.
     Key([mod, "control"], "Left", lazy.layout.grow_left(), desc="Grow window to the left"),
     Key([mod, "control"], "Right", lazy.layout.grow_right(), desc="Grow window to the right"),
     Key([mod, "control"], "Down", lazy.layout.grow_down(), desc="Grow window down"),
     Key([mod, "control"], "Up", lazy.layout.grow_up(), desc="Grow window up"),
-    Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
+    #Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
     
     # Toggle between split and unsplit sides of stack.
     # Split = all windows displayed
@@ -128,7 +145,7 @@ layouts = [
     #layout.RatioTile(border_focus="0362fc", border_width=2, margin=8),
     #layout.Tile(border_focus="0362fc", border_width=2, margin=8),
     #layout.TreeTab(),
-    #layout.VerticalTile(border_focus="0362fc", border_width=2, margin=8),
+    layout.VerticalTile(border_focus="0362fc", border_width=2, margin=8),
     #layout.Zoomy(border_focus="0362fc", border_width=2, margin=8),
 ]
 
@@ -161,11 +178,26 @@ screens = [
                             fontsize=(1),
                             background='8F8F88',
                             ),
-                widget.WindowName(
+                #widget.WindowName(
                             
-                            foreground="ffffff",
-                            background="8F8F88",
+                 #           foreground="ffffff",
+                  #          background="8F8F88",
                     
+                   #         ),
+                widget.TaskList(
+                            background="8F8F88",
+                            foreground="ffffff",
+                            border="0362fc",         # Highlighted/focused window border colour (matches your theme)
+                            unfocused_border="555555",
+                            borderwidth=1,
+                            icon_size=18,             # Hide icons for a cleaner look; set to e.g. 18 if you prefer them
+                            fontsize=15,
+                            txt_minimized="🗕 ",     # Prefix for minimized windows in the list
+                            txt_maximized="🗖 ",     # Prefix for maximized windows
+                            txt_floating="🗗 ",      # Prefix for floating windows
+                            title_width_method="uniform",
+                            markup_focused='<b>{}</b>',   # Bold the focused window name
+                            padding=4,
                             ),
                 widget.Chord(
                             chords_colors={
