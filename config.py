@@ -12,6 +12,12 @@ from libqtile.config import Click, Drag, Group, Key, Match, Output, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
 
+def get_ram_usage():
+    used = psutil.virtual_memory().used / (1024 ** 2)  # convert to MB
+    if used >= 1000:
+        return f"{used / 1024:.1f}GB"
+    return f"{used:.0f}MB"
+
 _disk_io_prev = [None, None]  # [io_counters, timestamp]
 
 def get_disk_io_usage():
@@ -129,9 +135,10 @@ keys = [
     # Toggle between different layouts as defined below
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
     Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
-    Key([mod, "control"], "r", lazy.reload_config(), desc="Reload the config"),
+    Key([mod], "r", lazy.reload_config(), desc="Reload the config"),
+    
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
-    Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
+    #rKey([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
     Key([mod], "space", lazy.spawn("xfce4-appfinder")), 
 
     # Launch apps/commands
@@ -235,9 +242,9 @@ screens = [
                 widget.TaskList(
                             background="8F8F88",
                             foreground="ffffff",
-                            border="0362fc",         # Highlighted/focused window border colour (matches your theme)
+                            border="000000",         # Highlighted/focused window border colour (matches your theme)
                             unfocused_border="555555",
-                            borderwidth=1,
+                            borderwidth=2,
                             icon_size=18,             # Hide icons for a cleaner look; set to e.g. 18 if you prefer them
                             fontsize=15,
                             txt_minimized="🗕 ",     # Prefix for minimized windows in the list
@@ -247,37 +254,43 @@ screens = [
                             markup_focused='<b>{}</b>',   # Bold the focused window name
                             padding=4,
                             ),
+
+         widget.TextBox("",
+                            fontsize=(0),
+                            foreground="000000",
+                            background='000000',
+                            padding=10,
+                            ),
                 widget.Chord(
                             chords_colors={
                             "launch": ("#ff0000", "#ffffff"),
                             },
                             name_transform=lambda name: name.upper(),
                             ),
-              widget.TextBox("",
-                            fontsize=(90),
-                            foreground="8F8F88",
-                            background='80807A',
-                            padding=-14,
-                            ),
-               widget.TextBox(" ",
+              widget.TextBox(" ",
                             fontsize=(1),
-                            background='80807A',
+                            background='8F8F88',
                             ),
-                 widget.Systray(
+              widget.Systray(
                             icon_size=(24),
-                            background="80807A"
-                    
+                            background="8F8F88"      
                             ),
-                widget.TextBox(" ",
-                            fontsize=(1),
-                            background='80807A',
-                            ),
-                widget.TextBox("",
-                            fontsize=(90),
-                            foreground="80807A",
+
+                            #desing prototype
+              widget.TextBox("", #test new separator desing
+                            fontsize=(38),
+                            foreground="8F8F88",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
+                            foreground="000000",
                             background='3483eb',
-                            padding=-14,
+                            padding=0,
                             ),
+
                widget.TextBox(" ",
                             fontsize=(1),
                             background='3483eb',
@@ -286,26 +299,31 @@ screens = [
                             fontsize=(35),
                             background='3483eb',
                             ),
-                widget.CPU(
-                            background='3483eb',
-                            format='{load_percent:>6.2f}% '
-                            ),
-                widget.TextBox("󰏈",
-                            fontsize=(30),
-                            background="3483eb"
-                            ),
-                widget.ThermalSensor(
-                            tag_sensor="Core 0",
-                            background="3483eb",
-                            update_interval=1,        
-                            ),
+widget.CPU(
+    background='3483eb',
+    format='{load_percent:>6.2f}% '
+),
+
+widget.ThermalSensor(
+    tag_sensor="Core 0",
+    background="3483eb",
+    update_interval=1,
+),
+
 # CPU → Disk transition
 
-         widget.TextBox("",
-                            fontsize=(90),
+                                        widget.TextBox("", #test new separator desing
+                            fontsize=(38),
                             foreground="3483eb",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
+                            foreground="000000",
                             background='e07020',
-                            padding=-14,
+                            padding=0,
                             ),
               widget.TextBox(" ",
                             fontsize=(1),
@@ -331,35 +349,46 @@ screens = [
                             fontsize=18,
                             padding=4,
                         ),
+
+                        
 # Disk → RAM transition
-         widget.TextBox("",
-                            fontsize=(90),
+            widget.TextBox("", #test new separator desing
+                            fontsize=(38),
                             foreground="e07020",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
+                            foreground="000000",
                             background='0dd459',
-                            padding=-14,
-                            ),
-                widget.TextBox("  ",
-                            fontsize=(1),
-                            background='0dd459',
+                            padding=0,
                             ),
                 widget.TextBox("󰒋",
                             fontsize=(25),
                             background='0dd459',
                             ),
-            widget.Memory(
-                            background='0dd459',
-                            format='{MemUsed:.0f}{mm}',
-                            ),
-                #Swidget.TextBox(" "),
-                widget.TextBox("",
-                            fontsize=(90),
+#pending to be added as changes log to repo, 
+widget.GenPollText(
+    background='0dd459',
+    func=get_ram_usage,
+    update_interval=2,
+    fontsize=18,
+    padding=4,
+),
+                                        widget.TextBox("", #test new separator desing
+                            fontsize=(38),
                             foreground="0dd459",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
+                            foreground="000000",
                             background='9f11c2',
-                            padding=-14,
-                            ),
-               widget.TextBox(" ",
-                            fontsize=(1),
-                            background='9f11c2',
+                            padding=0,
                             ),
                widget.TextBox("󰈀",
                             fontsize=(30),
@@ -372,11 +401,18 @@ screens = [
                             fontsize=18,
                             padding=4,
                             ),
-                widget.TextBox("",
-                            fontsize=(90),
+                                        widget.TextBox("", #test new separator desing
+                            fontsize=(38),
                             foreground="9f11c2",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
+                            foreground="000000",
                             background='c2b911',
-                            padding=-14,
+                            padding=0,
                             ),
                 widget.TextBox(" ",
                             fontsize=(1),
@@ -408,9 +444,9 @@ screens = [
                             ), 
             ],
             34,
-            border_width=[3, 3, 3, 3],  # Draw top and bottom borders
+            border_width=[10, 5, 10, 5],  # Draw top and bottom borders
             margin=[8,8,0,8],
-            border_color="000000"  # Borders are magenta
+            border_color="000000",  # Borders are magenta
         ),
     ),
 ]
