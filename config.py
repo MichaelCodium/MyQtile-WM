@@ -224,15 +224,38 @@ screens = [
             [
                widget.CurrentLayout(
                             fontsize=(17),
-               ),
-               widget.GroupBox(
-                            fontsize=(17),
-               ),
+               ),                      
               widget.TextBox("",
-                            fontsize=(90),
+                            fontsize=(38),
+                            foreground="000000",
+                            background='ffffff',
+                            padding=0,
+                            ),
+widget.GroupBox(
+    fontsize=(17),
+    background="ffffff",
+    active="000000",                   # groups with windows → black text
+    inactive="888888",                 # empty groups → grey text
+    highlight_method="block",          # fills focused group with a colour block
+    this_current_screen_border="000000",  # focused group block colour → your blue
+    block_highlight_text_color="ffffff",  # focused group text → white (on blue block)
+    urgent_border="ff0000",            # urgent group → red
+    borderwidth=2,
+    rounded=False,
+),
+                            #desing prototype
+              widget.TextBox("", #test new separator desing
+                            fontsize=(38),
+                            foreground="ffffff",
+                            background='000000',
+                            padding=0,
+                            ),          
+                   
+              widget.TextBox("",
+                            fontsize=(38),
                             foreground="000000",
                             background='8F8F88',
-                            padding=-14,
+                            padding=0,
                             ),
                widget.TextBox(" ",
                             fontsize=(1),
