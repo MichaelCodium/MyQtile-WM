@@ -4,6 +4,7 @@ import time as _time
 import psutil
 import libqtile.resources
 import subprocess
+import threading
 
 from collections.abc import Callable
 from libqtile import hook
@@ -12,11 +13,44 @@ from libqtile.config import Click, Drag, Group, Key, Match, Output, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
 
+
+def _mount_gdrive():
+    """Wait for network then mount Google Drive."""
+    import os
+    env = os.environ.copy()
+    env["HOME"] = "/home/xunlai"
+
+    # Don't start if already mounted
+    if subprocess.run(["pgrep", "rclone"], capture_output=True).returncode == 0:
+        return
+
+    for _ in range(30):
+        result = subprocess.run(
+            ["ping", "-c", "1", "-W", "2", "8.8.8.8"],
+            capture_output=True
+        )
+        if result.returncode == 0:
+            subprocess.Popen([
+                "rclone", "mount", "gdrive:",
+                "/home/xunlai/GoogleDrive/",
+                "--vfs-cache-mode", "writes",
+                "--daemon",
+            ], env=env)
+            break
+        _time.sleep(2)
+
 def get_ram_usage():
-    used = psutil.virtual_memory().used / (1024 ** 2)  # convert to MB
-    if used >= 1000:
-        return f"{used / 1024:.1f}GB"
-    return f"{used:.0f}MB"
+    mem = psutil.virtual_memory()
+    used_mb = (mem.total - mem.available) / (1024 ** 2)
+    if used_mb >= 1000:
+        return f"{used_mb / 1024:.1f}GB"
+    return f"{used_mb:.0f}MB"
+
+def get_ram_percent():
+    mem = psutil.virtual_memory()
+    used = mem.total - mem.available
+    percent = (used / mem.total) * 100
+    return f"{percent:.1f}%"
 
 _disk_io_prev = [None, None]  # [io_counters, timestamp]
 
@@ -81,18 +115,24 @@ def unminimize_next(qtile):
 
 @hook.subscribe.startup_once
 def autostart():
-    home = os.path.expanduser('~/.config/qtile/autostart.sh')
-    subprocess.Popen([home])
-    
-    #wallpaper
-    subprocess.run(["feh", "--bg-fill", "/home/xunlai/.config/qtile/media/pictures/wallpapers/victoria-harbour-6144x3456-11445.jpg"])
+    # XFCE services
+    subprocess.Popen(["xfsettingsd"])
+    subprocess.Popen(["xfce4-power-manager"])
+    subprocess.Popen(["nm-applet"])
 
-    #Screen locker process
+    # Wallpaper
+    subprocess.run(["feh", "--bg-fill",
+        "/home/xunlai/.config/qtile/media/pictures/wallpapers/victoria-harbour-6144x3456-11445.jpg"])
+
+    # Screen locker
     subprocess.Popen(["xfce4-screensaver"])
+
+    # Google Drive mount — runs in background thread waiting for network
+    threading.Thread(target=_mount_gdrive, daemon=True).start()
+
+
 mod = "mod4"
 terminal = guess_terminal()
-
-
 
 keys = [
     # A list of available commands that can be bound to keys can be found
@@ -123,7 +163,7 @@ keys = [
     Key([mod, "control"], "Right", lazy.layout.grow_right(), desc="Grow window to the right"),
     Key([mod, "control"], "Down", lazy.layout.grow_down(), desc="Grow window down"),
     Key([mod, "control"], "Up", lazy.layout.grow_up(), desc="Grow window up"),
-    #Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
+    Key([mod], "r", lazy.layout.normalize(), desc="Reset all window sizes"),
     
     # Toggle between split and unsplit sides of stack.
     # Split = all windows displayed
@@ -135,7 +175,7 @@ keys = [
     # Toggle between different layouts as defined below
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
     Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
-    Key([mod], "r", lazy.reload_config(), desc="Reload the config"),
+    Key([mod, "shift"], "r", lazy.reload_config(), desc="Reload the config"),
     
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
     #rKey([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
@@ -396,7 +436,15 @@ widget.ThermalSensor(
 widget.GenPollText(
     background='0dd459',
     func=get_ram_usage,
-    update_interval=2,
+    update_interval=1,
+    fontsize=18,
+    padding=4,
+),
+
+widget.GenPollText(
+    background='0dd459',
+    func=get_ram_percent,
+    update_interval=1,
     fontsize=18,
     padding=4,
 ),
@@ -447,7 +495,7 @@ widget.GenPollText(
                             ),
                 widget.Clock(
                             background='c2b911',
-                            format="%a %dth %H:%M "
+                            format="%a %dth %b %H:%M"
                             ),
                widget.TextBox("",
                             fontsize=(90),
