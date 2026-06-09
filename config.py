@@ -13,6 +13,15 @@ from libqtile.config import Click, Drag, Group, Key, Match, Output, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
 
+@lazy.function
+def lock_screen(qtile):
+    """Exit fullscreen on all windows, then lock the screen."""
+    for group in qtile.groups:
+        for window in group.windows:
+            if window.fullscreen:
+                window.toggle_fullscreen()
+            window.minimized = True
+    subprocess.Popen(["xfce4-screensaver-command", "--lock"])
 
 def _mount_gdrive():
     """Wait for network then mount Google Drive."""
@@ -116,9 +125,13 @@ def unminimize_next(qtile):
 @hook.subscribe.startup_once
 def autostart():
     # XFCE services
+    subprocess.Popen(["xfce4-clipman"])
     subprocess.Popen(["xfsettingsd"])
     subprocess.Popen(["xfce4-power-manager"])
     subprocess.Popen(["nm-applet"])
+
+    # Language services
+    subprocess.Popen(["fcitx5", "-d"])   # -d runs as daemon
 
     # Wallpaper
     subprocess.run(["feh", "--bg-fill",
@@ -182,14 +195,22 @@ keys = [
     Key([mod], "space", lazy.spawn("xfce4-appfinder")), 
 
     # Launch apps/commands
+    Key([mod, "shift"], "b", lazy.hide_show_bar("top"), desc="Toggle top bar visibility"),
     Key([], "XF86AudioRaiseVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ +5%"), desc="Raise volume by 5 percent"),
     Key([], "XF86AudioLowerVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ -5%"), desc="Lower volume by 5 percent"),
     Key(["mod4"], "t", lazy.spawn("xfce4-taskmanager"), desc="Launch Task Manager"),
-    Key(["mod4"], "l", lazy.spawn("xfce4-screensaver-command --lock"), desc="Lock the screen"),
+   Key(["mod4"], "l", lock_screen, desc="Lock the screen"),
     Key([mod], "f", lazy.spawn("thunar"), desc="Launch file browser Thunar"),
     Key([mod], "b", lazy.spawn("firefox"), desc="Launch browser Firefox"),   
     Key([mod], "v", lazy.spawn("pavucontrol"), desc="Launch volume interface Pavucontrol"),
-    Key([mod], "s", lazy.spawn("scrot -e 'mv $f /home/xunlai/Pictures/Screenshots/ && notify-send \"Screenshot saved\"'")),
+    Key([mod], "s", lazy.spawn(
+    "scrot -e '"
+    "cp $f /home/xunlai/Pictures/Screenshots/ && "
+    "cp $f /home/xunlai/GoogleDrive/Media/Pics/Screenshots/ && "
+    "xclip -selection clipboard -t image/png -i $f && "
+    "rm $f && "
+    "notify-send \"Screenshot saved & copied to clipboard\"'"
+    )),
      
 ]
 
@@ -251,7 +272,9 @@ layouts = [
 ]
 
 widget_defaults = dict(
-    font="TerminessTTF Nerd Font",
+    font="Terminus  Bold",
+    #font="Sarasa Term SC Nerd Regular",
+
     fontsize=18,
     padding=3,
 )
@@ -317,8 +340,11 @@ widget.GroupBox(
                             markup_focused='<b>{}</b>',   # Bold the focused window name
                             padding=4,
                             ),
-
-         widget.TextBox("",
+              widget.TextBox(" ",
+                            fontsize=(1),
+                            background='8F8F88',
+                            ),
+              widget.TextBox("",
                             fontsize=(0),
                             foreground="000000",
                             background='000000',
@@ -464,6 +490,7 @@ widget.GenPollText(
                widget.TextBox("󰈀",
                             fontsize=(30),
                             background='9f11c2',
+                            padding=10,
                             ),
           widget.GenPollText(
                             background='9f11c2',
@@ -485,18 +512,24 @@ widget.GenPollText(
                             background='c2b911',
                             padding=0,
                             ),
-                widget.TextBox(" ",
-                            fontsize=(1),
-                            background='c2b911',
-                            ),
                 widget.TextBox("",
-                            fontsize=(30),
+                            fontsize=(27),
                             background='c2b911',
+                            padding=10,
                             ),
-                widget.Clock(
+          widget.GenPollText(
                             background='c2b911',
-                            format="%a %dth %b %H:%M"
-                            ),
+                            update_interval=60,
+    func=lambda: _time.strftime("%m月%d日 ", _time.localtime()) + {
+        0: "周一",
+        1: "周二",
+        2: "周三",
+        3: "周四",
+        4: "周五",
+        5: "周六",
+        6: "周日",
+                            }[_time.localtime().tm_wday] + _time.strftime(" %H:%M"),
+                             ),
                widget.TextBox("",
                             fontsize=(90),
                             foreground="c2b911",
